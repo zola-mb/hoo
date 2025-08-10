@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Zola – Head of Operations Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Print tweaks */
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #ffffff !important; }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-neutral-50 text-neutral-900">
+  <div id="app" class="mx-auto max-w-6xl px-4 py-8">
+    <!-- Header -->
+    <header class="mb-8">
+      <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 class="text-3xl md:text-4xl font-bold tracking-tight">Head of Operations Dashboard</h1>
+          <p class="mt-1 text-sm opacity-80">Define, run, and improve operations with clarity.</p>
+        </div>
+        <div class="space-y-2">
+          <div class="flex gap-2">
+            <input id="orgInput" class="px-3 py-2 rounded-xl border border-neutral-300 bg-white w-80" title="Organisation or page title"/>
+            <input id="nameInput" class="px-3 py-2 rounded-xl border border-neutral-300 bg-white w-40" title="Owner"/>
+          </div>
+          <div class="text-xs opacity-70">Customise the heading and owner to make it yours.</div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl p-5 border border-neutral-200 bg-white/80 backdrop-blur">
+        <div class="flex flex-col gap-4">
+          <!-- Controls -->
+          <div class="flex flex-col md:flex-row md:items-center gap-3">
+            <div class="flex items-center gap-2">
+              <button id="themeBtn" class="px-3 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-100 no-print">Dark mode</button>
+              <button id="printBtn" class="px-3 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-100 no-print">Print / PDF</button>
+              <button id="resetBtn" class="px-3 py-2 rounded-xl border border-red-300 text-red-700 hover:bg-red-50 no-print">Reset checklist</button>
+            </div>
+            <div class="md:ml-auto flex items-center gap-2">
+              <input id="searchInput" placeholder="Search tasks…" class="px-3 py-2 rounded-xl border border-neutral-300 bg-white w-64 no-print"/>
+            </div>
+          </div>
+          <!-- Progress -->
+          <div class="flex items-center gap-4">
+            <div class="text-sm font-medium">Overall progress</div>
+            <div class="min-w-[120px] w-48">
+              <div class="w-full h-3 bg-neutral-200 rounded-full overflow-hidden">
+                <div id="overallBar" class="h-full bg-neutral-900 transition-all" style="width:0%"></div>
+              </div>
+            </div>
+            <div id="overallText" class="text-sm tabular-nums opacity-70">0% • 0/0</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Grid -->
+    <main id="grid" class="grid grid-cols-1 md:grid-cols-2 gap-6"></main>
+
+    <footer class="mt-10 text-xs opacity-60 text-center">
+      <p>Built for operational clarity. Tip: Save this page or print to PDF.</p>
+    </footer>
+  </div>
+
+  <script>
+    // --- Simple Vanilla JS version (Pages-friendly) ---
+    const STORAGE_KEY = 'hoo-dashboard-v2';
+    const THEME_KEY = 'hoo-theme-dark';
+    const ORG_KEY = 'hoo-org-name';
+    const OWNER_KEY = 'hoo-owner-name';
+
+    const DEFAULT_DATA = [
+      {
+        id: 'weekly', title: 'Weekly', color: ['from-indigo-500','to-purple-500'], items: [
+          { id: 'w1', text: 'Team check-ins with project managers', done: false },
+          { id: 'w2', text: 'Update Ops Overview tracker', done: false },
+          { id: 'w3', text: '10–15 min cashflow & spend vs budget review', done: false },
+          { id: 'w4', text: 'Inbox triage for ops decisions', done: false },
+          { id: 'w5', text: 'Unblock one team bottleneck', done: false },
+          { id: 'w6', text: 'ED alignment: priorities, risks, progress', done: false },
+        ]
+      },
+      {
+        id: 'monthly', title: 'Monthly', color: ['from-emerald-500','to-teal-500'], items: [
+          { id: 'm1', text: 'Budget vs actuals deep-dive with Finance', done: false },
+          { id: 'm2', text: 'Programme KPI review (delivery, outputs, impact)', done: false },
+          { id: 'm3', text: 'HR & capacity check (leave, renewals, morale)', done: false },
+          { id: 'm4', text: 'Compliance calendar review (statutory & funder)', done: false },
+          { id: 'm5', text: 'Stakeholder updates sent (funders/partners)', done: false },
+          { id: 'm6', text: 'One small process improvement', done: false },
+          { id: 'm7', text: 'Facilities & assets check', done: false },
+        ]
+      },
+      {
+        id: 'quarterly', title: 'Quarterly', color: ['from-amber-500','to-orange-500'], items: [
+          { id: 'q1', text: 'Ops strategy review & reprioritisation', done: false },
+          { id: 'q2', text: 'Risk register update', done: false },
+          { id: 'q3', text: 'Team development / training session', done: false },
+          { id: 'q4', text: 'Board/Trustee pack prepared', done: false },
+          { id: 'q5', text: 'Funder relationship review & next steps', done: false },
+          { id: 'q6', text: 'Policy & procedure currency check', done: false },
+        ]
+      },
+      {
+        id: 'annual', title: 'Annual', color: ['from-fuchsia-500','to-pink-500'], items: [
+          { id: 'a1', text: 'Annual operational plan built from strategy', done: false },
+          { id: 'a2', text: 'Budget development with Finance & programme heads', done: false },
+          { id: 'a3', text: 'Performance reviews completed', done: false },
+          { id: 'a4', text: 'Systems audit (HR, finance, procurement, reporting)', done: false },
+          { id: 'a5', text: 'Major funder & stakeholder meetings', done: false },
+          { id: 'a6', text: 'Compliance audit completed', done: false },
+          { id: 'a7', text: 'Organisation-wide risk audit', done: false },
+        ]
+      }
+    ];
+
+    // State
+    let state = load(STORAGE_KEY, DEFAULT_DATA);
+    let dark = !!load(THEME_KEY, false);
+    let orgName = load(ORG_KEY, 'Masinyusane – Head of Operations');
+    let ownerName = load(OWNER_KEY, 'Zola');
+    let searchTerm = '';
+
+    // Elements
+    const grid = document.getElementById('grid');
+    const overallBar = document.getElementById('overallBar');
+    const overallText = document.getElementById('overallText');
+    const printBtn = document.getElementById('printBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const themeBtn = document.getElementById('themeBtn');
+    const searchInput = document.getElementById('searchInput');
+    const orgInput = document.getElementById('orgInput');
+    const nameInput = document.getElementById('nameInput');
+
+    // Init
+    document.addEventListener('DOMContentLoaded', () => {
+      if (dark) document.documentElement.classList.add('dark');
+      applyTheme();
+      orgInput.value = orgName;
+      nameInput.value = ownerName;
+      render();
+    });
+
+    // Event handlers
+    printBtn.addEventListener('click', () => window.print());
+    resetBtn.addEventListener('click', () => {
+      if (confirm('Reset all checklists?')) {
+        state = JSON.parse(JSON.stringify(DEFAULT_DATA));
+        save(STORAGE_KEY, state);
+        render();
+      }
+    });
+    themeBtn.addEventListener('click', () => {
+      dark = !dark;
+      save(THEME_KEY, dark);
+      document.documentElement.classList.toggle('dark', dark);
+      applyTheme();
+    });
+    searchInput.addEventListener('input', (e) => { searchTerm = e.target.value.toLowerCase(); render(); });
+    orgInput.addEventListener('input', (e) => { orgName = e.target.value; save(ORG_KEY, orgName); });
+    nameInput.addEventListener('input', (e) => { ownerName = e.target.value; save(OWNER_KEY, ownerName); });
+
+    function applyTheme(){
+      document.body.classList.toggle('bg-neutral-50', !dark);
+      document.body.classList.toggle('text-neutral-900', !dark);
+      document.body.classList.toggle('bg-neutral-950', dark);
+      document.body.classList.toggle('text-neutral-100', dark);
+      themeBtn.textContent = dark ? 'Light mode' : 'Dark mode';
+    }
+
+    // Render
+    function render(){
+      // Overall progress
+      const all = state.flatMap(c => c.items);
+      const done = all.filter(i => i.done).length;
+      const pct = all.length ? Math.round(done / all.length * 100) : 0;
+      overallBar.style.width = pct + '%';
+      overallText.textContent = `${pct}% • ${done}/${all.length}`;
+
+      // Cards
+      grid.innerHTML = '';
+      state.forEach(cat => {
+        const filteredItems = !searchTerm
+          ? cat.items
+          : cat.items.filter(i => i.text.toLowerCase().includes(searchTerm));
+
+        const doneCount = cat.items.filter(i => i.done).length;
+        const catPct = cat.items.length ? Math.round(doneCount / cat.items.length * 100) : 0;
+
+        const card = el('div', 'group relative rounded-2xl p-5 border border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 backdrop-blur shadow-sm hover:shadow-md transition');
+        const bg = el('div', `absolute inset-0 -z-10 rounded-2xl bg-gradient-to-br ${cat.color.join(' ')} opacity-10`);
+        card.appendChild(bg);
+
+        const head = el('div', 'flex items-center justify-between gap-3 mb-3');
+        head.appendChild(el('h3', 'text-xl font-semibold tracking-tight', cat.title));
+        head.appendChild(el('span', 'text-sm tabular-nums opacity-70', `${doneCount}/${cat.items.length}`));
+        card.appendChild(head);
+
+        card.appendChild(progress(catPct));
+
+        const list = el('ul', 'mt-4 space-y-2');
+        filteredItems.forEach(item => {
+          const li = el('li', 'flex items-start gap-3');
+          const checkbox = el('input', 'mt-1 h-4 w-4 rounded border-neutral-300 dark:border-neutral-700');
+          checkbox.type = 'checkbox';
+          checkbox.checked = !!item.done;
+          checkbox.addEventListener('change', () => toggleItem(cat.id, item.id));
+          li.appendChild(checkbox);
+
+          const wrap = el('div', 'flex-1');
+          const row = el('div', 'flex items-center gap-2');
+          const textBtn = el('button', 'text-left hover:bg-neutral-50 dark:hover:bg-neutral-800/60 rounded px-1');
+          textBtn.title = 'Click to edit';
+          textBtn.textContent = item.text;
+          textBtn.addEventListener('click', () => editItem(cat.id, item.id, item.text));
+          row.appendChild(textBtn);
+
+          const delBtn = el('button', 'ml-auto text-xs px-2 py-1 rounded-full border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800');
+          delBtn.textContent = 'Delete';
+          delBtn.addEventListener('click', () => deleteItem(cat.id, item.id));
+          row.appendChild(delBtn);
+
+          wrap.appendChild(row);
+          li.appendChild(wrap);
+          list.appendChild(li);
+        });
+        card.appendChild(list);
+
+        // Add item row
+        const form = el('form', 'mt-4 flex gap-2');
+        const input = el('input', 'flex-1 px-3 py-2 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900');
+        input.placeholder = `Add a ${cat.title.toLowerCase()} task…`;
+        const addBtn = el('button', 'px-3 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800');
+        addBtn.textContent = 'Add';
+        form.append(input, addBtn);
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const v = (input.value || '').trim();
+          if(!v) return;
+          addItem(cat.id, v);
+          input.value = '';
+        });
+        card.appendChild(form);
+
+        grid.appendChild(card);
+      });
+    }
+
+    // Helpers
+    function el(tag, cls, text){
+      const n = document.createElement(tag);
+      if (cls) n.className = cls;
+      if (text != null) n.textContent = text;
+      return n;
+    }
+    function progress(pct){
+      const wrap = el('div', 'w-full h-3 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden');
+      const bar = el('div', 'h-full bg-neutral-900 dark:bg-white/90 transition-all');
+      bar.style.width = pct + '%';
+      wrap.appendChild(bar);
+      return wrap;
+    }
+    function save(key, value){
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+    }
+    function load(key, fallback){
+      try {
+        const v = localStorage.getItem(key);
+        return v ? JSON.parse(v) : fallback;
+      } catch { return fallback; }
+    }
+
+    // State mutators
+    function toggleItem(catId, itemId){
+      state = state.map(c => c.id !== catId ? c : ({ ...c, items: c.items.map(i => i.id === itemId ? ({ ...i, done: !i.done }) : i) }));
+      save(STORAGE_KEY, state);
+      render();
+    }
+    function addItem(catId, text){
+      state = state.map(c => c.id !== catId ? c : ({ ...c, items: [...c.items, { id: `${catId}-${Date.now()}`, text, done:false }] }));
+      save(STORAGE_KEY, state);
+      render();
+    }
+    function editItem(catId, itemId, current){
+      const next = prompt('Edit task:', current);
+      if (next == null) return;
+      const text = next.trim();
+      if (!text) return;
+      state = state.map(c => c.id !== catId ? c : ({ ...c, items: c.items.map(i => i.id === itemId ? ({ ...i, text }) : i) }));
+      save(STORAGE_KEY, state);
+      render();
+    }
+    function deleteItem(catId, itemId){
+      state = state.map(c => c.id !== catId ? c : ({ ...c, items: c.items.filter(i => i.id !== itemId) }));
+      save(STORAGE_KEY, state);
+      render();
+    }
+  </script>
+</body>
+</html>
