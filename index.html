@@ -260,8 +260,8 @@
       return n;
     }
     function progress(pct){
-      const wrap = el('div', 'w-full h-3 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden');
-      const bar = el('div', 'h-full bg-neutral-900 dark:bg-white/90 transition-all');
+      const wrap = el('div', 'w-full h-3 bg-neutral-200 light:bg-neutral-800 rounded-full overflow-hidden');
+      const bar = el('div', 'h-full bg-neutral-900 light:bg-white/90 transition-all');
       bar.style.width = pct + '%';
       wrap.appendChild(bar);
       return wrap;
